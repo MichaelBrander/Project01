@@ -34,7 +34,7 @@ async def main(stock_symbol="AAPL", extra_params=None):
         api_url += f"&{extra_params}"
 
     requests_per_second = 2
-    duration_seconds = 60
+    duration_seconds = 23400
     total_requests = requests_per_second * duration_seconds
 
     fetched_data = []
@@ -47,7 +47,7 @@ async def main(stock_symbol="AAPL", extra_params=None):
             else:
                 logging.info("Failed to fetch data")
     
-    await asyncio.sleep(0.25)
+    await asyncio.sleep(0.5)
 
     with open('stock_data.json', 'w') as file:
         json.dump(fetched_data, file)
