@@ -1,27 +1,26 @@
-from datetime import datetime, timedelta
-import datetime as dt 
+from datetime import datetime, timedelta, time as dt_time
 from airflow.models import DAG
 from airflow.operators.python import PythonOperator
-import aiohttp
 from dotenv import load_dotenv
-import asyncio
 import pytz
 import os
 import logging
 import json
 import pandas as pd
-import pyarrow.parquet as pq
 import plotly.graph_objs as go
-import pdfkit
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
 from sqlalchemy import create_engine
-import time
+import time 
+from airflow.providers.http.operators.http import SimpleHttpOperator
+from airflow.providers.http.sensors.http import HttpSensor
+from airflow.models import Variable
+from airflow.providers.http.hooks.http import HttpHook
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-load_dotenv('/Users/michaelb/Project 01/apikey.env')
+password=os.getenv('password')
 
 default_args = {
     'owner': 'airflow',
@@ -30,6 +29,38 @@ default_args = {
     'retries': 1,
     'retry_delay': timedelta(minutes=5),
 }
+
+def fetch_stock_data():
+    stock_data = []
+    start_time = time.time()
+    api_key = Variable.get("API_KEY")
+    http = HttpHook(method="GET", http_conn_id="http_default")
+
+    stock_symbols = ["LULU", "CROX", "SHAK", "COST", "WBD", "NVDA", "LMT", "PM", "DJIA"]
+
+    end_time = start_time + 6.5 * 60 * 60
+
+    while time.time() < end_time:
+        for symbol in stock_symbols:
+            endpoint = f"quote/{symbol}?apikey={api_key}"
+            response = http.run(endpoint)
+            try:
+                response.raise_for_status()
+                data = response.json()
+                if "Error Message" in data:
+                    raise Exception(f"Endpoint returned an error message in a 200 response for {symbol}")
+            except Exception as err:
+                logging.error(f"{type(err)} - {err} for {symbol}")
+                logging.error(f"Request failed for {symbol} - {response.status_code} - {response.text}")
+                continue  # Skip to the next symbol in case of an error
+            stock_data.append(data[0])
+            logging.info(f"Data fetched for {symbol} - {len(stock_data)} records fetched.")
+
+    file_path = "/Users/michaelb/Project 01/stock_data.json"
+    with open(file_path, "w") as file:
+        json.dump(stock_data, file)
+
+
 
 def preprocessing():
     
@@ -135,13 +166,15 @@ def data_analysis():
                 c.save()
 
 def import_to_database():
+
+    
     try:
         start_time = time.time()
 
         df = pd.read_parquet('/Users/michaelb/Project 01/stock_data.parquet')
         logging.info("Parquet file loaded successfully.")
 
-        engine = create_engine('postgresql://michaelb:{password}localhost:5432/Project01')
+        engine = create_engine('postgresql://michaelb:{password}@localhost:5432/Project01')
         logging.info("Database engine created.")
 
         df.to_sql('Project01', engine, if_exists='append', index=False)
@@ -154,14 +187,18 @@ def import_to_database():
     except Exception as e:
         logging.error(f"An error occurred: {e}")
 
-with DAG('my_data_pipeline',
+with DAG('Stock_Price_Daily_Pipeline',
          default_args=default_args,
-         description='A simple data pipeline',
-         schedule='2 21 * * *',  
+         description='A data pipeline',
+         schedule='30 14 * * 1-5',  
          catchup=False) as dag:
 
 
-
+    task_fetch_stock_data = PythonOperator(
+        task_id='fetch_stock_data',
+        python_callable=fetch_stock_data,
+        dag=dag,
+    )
     task_preprocessing = PythonOperator(
         task_id='preprocessing',
         python_callable=preprocessing,
@@ -178,4 +215,4 @@ with DAG('my_data_pipeline',
         dag=dag,
     )
 
-task_preprocessing >> task_data_analysis >> task_import_to_database
+task_fetch_stock_data >> task_preprocessing >> task_data_analysis >> task_import_to_database
