@@ -1,6 +1,4 @@
 import pandas as pd
-import pyarrow as py
-import pyarrow.parquet as pq
 import logging
 import os
 import json
@@ -8,7 +6,7 @@ import datetime
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-json_file_path = '/Users/michaelb/Project 01/stock_data.json'
+json_file_path = 'C:\Projects\Project01\stock_data.json'
 
 fields_to_extract = ['symbol', 'name', 'price', 'changesPercentage', 'change', 
                      'dayLow', 'dayHigh', 'yearHigh', 'yearLow', 'marketCap',
@@ -49,7 +47,7 @@ try:
     selected_df['dayHigh'] = selected_df['dayHigh'].astype(float)
     selected_df['yearHigh'] = selected_df['yearHigh'].astype(float)
     selected_df['yearLow'] = selected_df['yearLow'].astype(float)
-    selected_df['marketCap'] = selected_df['marketCap'].astype(int)  
+    selected_df['marketCap'] = selected_df['marketCap'].astype(int)
     selected_df['priceAvg50'] = selected_df['priceAvg50'].astype(float)
     selected_df['priceAvg200'] = selected_df['priceAvg200'].astype(float)
     selected_df['volume'] = selected_df['volume'].astype(int)
@@ -95,7 +93,7 @@ if selected_df.isnull().any().any():
     logging.error("Missing values found in the DataFrame")
 
 try:
-    selected_df.to_parquet('/Users/michaelb/Project 01/stock_data.parquet')
+    selected_df.to_parquet('C:\Projects\Project01\stock_data.parquet')
 except IOError as e:
     logging.error(f"IOError occurred: {e}") 
 except ValueError as e:

@@ -9,7 +9,7 @@ import json
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-load_dotenv('/Users/michaelb/Project 01/apikey.env')
+load_dotenv('C:\\Projects\\Project01\\Variables\\apikey.env')
 
 def fetch_stocks(api_url):
     try:
@@ -31,8 +31,8 @@ def fetch_stocks(api_url):
 def is_within_trading_hours():
     ny_tz = pytz.timezone('America/New_York')
     ny_time = datetime.now(ny_tz).time()
-    start_time = dt_time(0, 30)
-    end_time = dt_time(16, 0)
+    start_time = dt_time(7, 35)
+    end_time = dt_time(7, 36)
     return start_time <= ny_time <= end_time
 
 def main(stock_symbols=["AAPL"], extra_params=None):
@@ -40,7 +40,7 @@ def main(stock_symbols=["AAPL"], extra_params=None):
     fetched_data = []
 
     while not is_within_trading_hours():
-        time.sleep(2.5)
+        time.sleep(0.0)
 
     while is_within_trading_hours():
         for symbol in stock_symbols:
