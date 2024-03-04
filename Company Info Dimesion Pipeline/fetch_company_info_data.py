@@ -6,7 +6,7 @@ import logging
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-load_dotenv('/Users/michaelb/Project 01/Env_Variables/apikey.env')
+load_dotenv('C:\Projects\Project01\\apikey.env')
 
 def fetch_companyinfo(api_url):
     try:

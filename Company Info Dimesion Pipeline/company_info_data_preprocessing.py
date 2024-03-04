@@ -4,7 +4,7 @@ import json
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-json_file_path = '/Users/michaelb/Project 01/companyinfo_data.json'
+json_file_path = 'C:\Projects\Project01\companyinfo_data.json'
 
 try:
     with open(json_file_path, 'r') as file:
@@ -22,7 +22,7 @@ try:
     print(df.dtypes)
     
     
-    df.to_parquet('/Users/michaelb/Project 01/Company Info Dimesion Pipeline/companyinfo_data.parquet')
+    df.to_parquet('C:\Projects\Project01\companyinfo_data.parquet')
     logging.info("Data validation and conversion to Parquet completed successfully")
     
 except FileNotFoundError:
