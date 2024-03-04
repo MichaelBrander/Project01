@@ -1,24 +1,21 @@
 from datetime import datetime, timedelta, time as dt_time
 from airflow.models import DAG
 from airflow.operators.python import PythonOperator
-from dotenv import load_dotenv
-import pytz
 import os
 import logging
 import json
 import pandas as pd
-import plotly.graph_objs as go
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
-from reportlab.lib.utils import ImageReader
 from sqlalchemy import create_engine
 import time 
 from airflow.models import Variable
 from airflow.providers.http.hooks.http import HttpHook
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from reportlab.lib import colors
+from reportlab.platypus import Table, TableStyle
+
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-password=os.getenv('password')
 
 default_args = {
     'owner': 'airflow',
@@ -50,7 +47,7 @@ def fetch_stock_data():
             except Exception as err:
                 logging.error(f"{type(err)} - {err} for {symbol}")
                 logging.error(f"Request failed for {symbol} - {response.status_code} - {response.text}")
-                continue  # Skip to the next symbol in case of an error
+                continue
             stock_data.append(data[0])
             logging.info(f"Data fetched for {symbol} - {len(stock_data)} records fetched.")
 
@@ -156,52 +153,93 @@ def preprocessing():
     logging.info("Data validation passed successfully")
 
 def data_analysis():
-                pdf_path = "stock_chart.pdf"
-                c = canvas.Canvas(pdf_path, pagesize=letter)
-                width, height = letter
+    # Load data
+    df = pd.read_parquet('C:\Projects\Project01\Container Airflow\outputs\stock_data.parquet')
 
-                parquet_file_path = '/opt/airflow/outputs/stock_data.parquet'
+    # Ensure 'timestamp' is a datetime column
+    df['timestamp'] = pd.to_datetime(df['timestamp'])
 
-                try:
-                            df = pd.read_parquet(parquet_file_path)
-                except Exception as e:
-                            logging.error(f"Error occurred while loading Parquet file: {e}")
+    # Top price movements (minute to minute) for the trading day
+    df['timestamp'] = df['timestamp'].dt.tz_convert('Australia/Sydney')
+    df['time'] = df['timestamp'].dt.strftime('%H:%M')
+    df['changesPercentage_diff'] = df.groupby('symbol')['changesPercentage'].diff()
+    df['price_diff'] = df.groupby('symbol')['price'].diff()
+    top_movements = df.sort_values(by='price_diff', key=abs, ascending=False).head(10).round(2)
+    top_movements = top_movements.drop(columns=['timestamp'])
 
 
-                df['timestamp'] = pd.to_datetime(df['timestamp'])
-                df.set_index('timestamp', inplace=True)
-                hourly_volume = df['volume'].resample('H').sum()
+    # Volatility Analysis
+    price_high = df.groupby('symbol')['price'].max()
+    price_low = df.groupby('symbol')['price'].min()
+    price_diff = (price_high - price_low)
+    opening_prices = df.groupby('symbol')['price'].first()
+    volatility = ((price_diff / opening_prices) * 100).round(2).sort_values(ascending=False)
+    volatility_df = volatility.reset_index(name='volatility_percentage')
 
-                fig = go.Figure()
+    # Stocks trading highest above their 50 day moving average
 
-                fig.add_trace(go.Scatter(x=df.index, y=df['price'], name='Price'))
 
-                fig.add_trace(go.Bar(x=hourly_volume.index, y=hourly_volume, name='Volume', yaxis='y2'))
+    last_prices = df.groupby('symbol').tail(1)
+    top_50day_avg_stocks = last_prices[['symbol', 'price', 'priceAvg50']]
+    top_50day_avg_stocks['price_to_avg50_ratio'] = top_50day_avg_stocks['price'] / top_50day_avg_stocks['priceAvg50']
+    top_50day_avg_stocks = top_50day_avg_stocks.sort_values(by='price_to_avg50_ratio', ascending=False).round(2)
+    top_50day_avg_stocks = top_50day_avg_stocks.head(10)
 
-                fig.update_layout(
-                        yaxis=dict(title='Price'),
-                        yaxis2=dict(title='Volume', side='right', overlaying='y', showgrid=False),
-                        barmode='overlay',
-                    )
+    # Generate PDF report
+    pdf_path = "stock_analysis_report.pdf"
+    c = canvas.Canvas(pdf_path, pagesize=letter)
+    width, height = letter
 
-                fig.write_image("stock_chart.png")
+    # Draw tables function
+    def draw_table(data, start_height, title, max_width=500):
+        # Prepare data for Table
+        data_list = [data.columns.values.tolist()] + data.values.tolist()
+        table = Table(data_list)
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('BOX', (0, 0), (-1, -1), 1, colors.black),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+        ]))
 
-                image_path = "stock_chart.png"
-                image = ImageReader(image_path)
-                c.drawImage(image, 50, height - 400, width=500, height=300) 
+        # Adjust table size
+        table.wrapOn(c, max_width, height)
+        table_height = table._height
+        table.drawOn(c, 72, start_height - table_height - 30)  # Adjust table start position
 
-                c.save()
+        # Title for the table
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(72, start_height - 15, title)
+
+
+    # Title
+    # Get today's date in the format Year-Month-Day
+    df['date'] = df['timestamp'].dt.date
+    report_date_str = df['date'].iloc[0].strftime("%Y-%m-%d")
+
+    # Title with dynamic date
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(72, height - 50, f"Stock Data Analysis Report - {report_date_str}")
+
+    # Drawing tables
+    draw_table(top_movements[['symbol', 'price', 'changesPercentage_diff', 'price_diff', 'time']], height - 90, "Top Minute-to-Minute Movements")
+    draw_table(volatility_df, height - 330, "Volatility Analysis - diff between day high, day low, over opening price")
+    draw_table(top_50day_avg_stocks, height - 560, "Top Stocks Above 50-Day Moving Average")
+
+    c.save()
+    print("PDF report generated: " + pdf_path)
 
 def import_to_database():
-
-    
+    password = Variable.get('password')
     try:
         start_time = time.time()
 
         df = pd.read_parquet('/opt/airflow/outputs/stock_data.parquet')
         logging.info("Parquet file loaded successfully.")
 
-        engine = create_engine('postgresql://postgres:{password}@host.docker.internal:5432/postgres')
+        engine = create_engine(f'postgresql://postgres:{password}@host.docker.internal:5432/postgres')
         logging.info("Database engine created.")
 
         df.to_sql('Project01', engine, if_exists='append', index=False)
@@ -213,6 +251,7 @@ def import_to_database():
         logging.info(f"Operation took {duration} seconds")
     except Exception as e:
         logging.error(f"An error occurred: {e}")
+
 
 with DAG('Stock_Price_Daily_Pipeline',
          default_args=default_args,

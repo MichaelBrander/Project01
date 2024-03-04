@@ -1,13 +1,10 @@
-import requests
 import json
-from dotenv import load_dotenv
 import logging
 from airflow import DAG
-from airflow.operators.python_operator import PythonOperator
+from airflow.operators.python import PythonOperator
 from airflow.providers.http.hooks.http import HttpHook
 from airflow.models import Variable
 from datetime import datetime, timedelta
-from dotenv import load_dotenv
 from sqlalchemy import create_engine
 import pandas as pd
 import time

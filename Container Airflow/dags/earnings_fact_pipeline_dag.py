@@ -1,19 +1,18 @@
 import json
-import os
 from datetime import datetime, timedelta
 from airflow import DAG
-from airflow.operators.python_operator import PythonOperator
+from airflow.operators.python import PythonOperator
 from dotenv import load_dotenv
-import requests
 import logging
 from airflow.models import Variable
 from airflow.providers.http.hooks.http import HttpHook
+from sqlalchemy import create_engine
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def fetch_earnings(symbol, http_conn_id='http_default', extra_params=None):
     http = HttpHook(method='GET', http_conn_id=http_conn_id)
-    api_key = Variable.get('API_KEY')  # Fetch the API key from Airflow Variables
+    api_key = Variable.get('API_KEY')  
     endpoint = f"/api/v3/key-metrics/{symbol}?period=annual&apikey={api_key}"
     if extra_params:
         endpoint += f"&{extra_params}"
@@ -43,7 +42,6 @@ def fetch_and_save_data(**kwargs):
         else:
             logging.info(f"Failed to fetch data for {symbol}")
 
-    # Ensure the directory exists or handle exceptions appropriately
     file_path = 'earnings_data.json'
     with open(file_path, 'w') as file:
         json.dump(fetched_data, file)
@@ -60,14 +58,9 @@ def process_and_save_data(**kwargs):
     df.to_parquet('C:\Projects\Project01\earnings_data.parquet')
 
 def load_data_to_database(**kwargs):
-    from sqlalchemy import create_engine
-    import os
-    import logging
-    import pandas as pd
-    import time
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-    password=os.getenv('password')
+    password = Variable.get('password')
 
     try:
         start_time = time.time()

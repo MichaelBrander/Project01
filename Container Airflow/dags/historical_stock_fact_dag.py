@@ -9,10 +9,10 @@ import pandas as pd
 from airflow.models import Variable
 from airflow.providers.http.hooks.http import HttpHook
 import time
+from sqlalchemy import create_engine
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-password=os.getenv('password')
 
 default_args = {
     'owner': 'airflow',
@@ -97,11 +97,10 @@ def preprocess_data():
     }
 
     normalised_df = normalised_df.rename(columns=column_mapping)
-
     normalised_df['composite_key'] = normalised_df['symbol'] + '_' + normalised_df['timestamp'].astype(str)
 
-    json_file_path2 = '/Users/michaelb/Project 01/Historical Stock Fact Load/historical_market_cap_data.json'
 
+    json_file_path2 = '/Users/michaelb/Project 01/Historical Stock Fact Load/historical_market_cap_data.json'
     fields_to_extract2 = ['symbol', 'date', 'marketCap']
 
 
@@ -134,24 +133,21 @@ def preprocess_data():
     for column in columns_to_convert:
         merged_df[column] = merged_df[column].astype('float64')
 
-    merged_df.to_parquet('/Users/michaelb/Project 01/Historical Stock Fact Load/historical_stock_fact.parquet', index=False)
-
-    print(merged_df.head(5))
-    print(merged_df.dtypes)
+    merged_df.to_parquet('/opt/airflow/outputs/historical_stock_fact.parquet', index=False)
 
     end_time = time.time()
 
     print('Time elapsed:', end_time - start_time, 'seconds')
 
 def import_data():
-    password=os.getenv('password')
+    password = Variable.get('password')
 
     try:
         start_time = time.time()
         logging.info("Starting script...")
 
         logging.info("Loading Parquet file...")
-        df = pd.read_parquet('/Users/michaelb/Project 01/Historical Stock Fact Load/historical_stock_fact.parquet')
+        df = pd.read_parquet('/opt/airflow/outputs/historical_stock_fact.parquet')
         logging.info("Parquet file loaded successfully.")
 
         logging.info("Creating database engine...")
