@@ -7,7 +7,7 @@ import logging
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-load_dotenv('/Users/michaelb/Project 01/Env_Variables/apikey.env')
+load_dotenv('C:\Projects\Project01\Variables\\apikey.env')
 
 def fetch_earnings(api_url):
     try:

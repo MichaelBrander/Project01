@@ -12,11 +12,12 @@ try:
     logging.info("Starting script..")
     
     logging.info("Loading Parquet file...")
-    df = pd.read_parquet('/Users/michaelb/Project 01/Earnings Fact Pipeline/earnings_data.parquet')
+    df = pd.read_parquet('C:\Projects\Project01\Container Airflow\outputs\stock_data.parquet')
     logging.info("Parquet file loaded successfully/")
     
     logging.info("Creating database engine...")
-    engine = create_engine(f'postgresql://michaelb:{password}@localhost:5432/Project01')
+    engine = create_engine(f'postgresql://postgres:{password}@localhost:5432/postgres')
+    connection = engine.raw_connection()
     logging.info("Database engine created.")
     
     logging.info("Inserting data into database..")
