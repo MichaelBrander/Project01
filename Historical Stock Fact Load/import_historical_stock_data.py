@@ -13,15 +13,15 @@ try:
     logging.info("Starting script...")
 
     logging.info("Loading Parquet file...")
-    df = pd.read_parquet('/Users/michaelb/Project 01/Historical Stock Fact Load/historical_stock_fact.parquet')
+    df = pd.read_parquet('C:\Projects\Project01\Container Airflow\outputs\stock_data.parquet')
     logging.info("Parquet file loaded successfully.")
 
     logging.info("Creating database engine...")
-    engine = create_engine(f'postgresql://michaelb:{password}@localhost:5432/Project01')
+    engine = create_engine(f'postgresql://postgres:{password}@localhost:5432/postgres')
     logging.info("Database engine created.")
     
     logging.info("Inserting data into database...")
-    df.to_sql('Project01', engine, if_exists='append', index=False)
+    df.to_sql('Stock_Price_Fact', engine, if_exists='append', index=False)
     logging.info("Data inserted into database.")
 
     end_time = time.time()

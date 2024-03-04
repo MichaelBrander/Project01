@@ -1,23 +1,18 @@
 from datetime import date, time as dt_time
-from airflow.models import DAG
-from airflow.operators.python import PythonOperator
+
 from dotenv import load_dotenv
 import pytz
 import os
 import logging
 import json
 import pandas as pd
-import plotly.graph_objs as go
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
-from reportlab.lib.utils import ImageReader
 from sqlalchemy import create_engine
 import time 
 import requests
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-load_dotenv('/Users/michaelb/Project 01/apikey.env')
+load_dotenv('C:\Projects\Project01\\apikey.env')
 
 
 def fetch_historical_data(api_url):
@@ -38,8 +33,8 @@ def fetch_historical_data(api_url):
             logging.error(f"An error occurred: {e}")
 
 
-def generate_date_ranges(start_year=2024, end_year=2000):
-    start_date = date(start_year, 1, 16)
+def generate_date_ranges(start_year=2025, end_year=2000):
+    start_date = date(start_year, 2, 21)
     for year in range(start_year, end_year - 1, -1):
         end_date = start_date.replace(year= year - 1)
         yield start_date, end_date
@@ -51,7 +46,7 @@ def main(stock_symbols=["AAPL"], extra_params=None):
         fetched_data1 = []
         for symbol in stock_symbols:
             for start_date, end_date in generate_date_ranges():    
-                api_url = f"https://financialmodelingprep.com/api/v3/historical-price-full/{symbol}?limit=100&from={start_date}&to={end_date}&apikey={api_key}"
+                api_url = f"https://financialmodelingprep.com/api/v3/historical-price-full/{symbol}?limit=1000&from={start_date}&to={end_date}&apikey={api_key}"
                 if extra_params:
                     api_url += f"&{extra_params}"
 
@@ -69,7 +64,7 @@ def main(stock_symbols=["AAPL"], extra_params=None):
         api_key=os.getenv('API_KEY')
         for symbol in stock_symbols:
             for start_date, end_date in generate_date_ranges():
-                api_url = f"https://financialmodelingprep.com/api/v3/historical-market-capitalization/{symbol}?limit=100&from={start_date}&to={end_date}&apikey={api_key}"
+                api_url = f"https://financialmodelingprep.com/api/v3/historical-market-capitalization/{symbol}?limit=1000&from={start_date}&to={end_date}&apikey={api_key}"
                 if extra_params:
                     api_url += f"&{extra_params}"
 

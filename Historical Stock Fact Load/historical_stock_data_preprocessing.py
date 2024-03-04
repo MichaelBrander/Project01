@@ -4,7 +4,7 @@ import time
 
 start_time = time.time()
 
-json_file_path = '/Users/michaelb/Project 01/Historical Stock Fact Load/historical_stock_price_data.json'
+json_file_path = 'C:\Projects\Project01\historical_stock_price_data.json'
 
 fields_to_extract = ['symbol', 'date', 'high', 'low', 'close', 'volume', 
                      'change', 'changePercent']
@@ -34,7 +34,7 @@ normalised_df['composite_key'] = normalised_df['symbol'] + '_' + normalised_df['
 
 
 #Specify the path to the second JSON file
-json_file_path2 = '/Users/michaelb/Project 01/Historical Stock Fact Load/historical_market_cap_data.json'
+json_file_path2 = 'C:\Projects\Project01\historical_market_cap_data.json'
 
 # Define the fields to extract from the second JSON file
 fields_to_extract2 = ['symbol', 'date', 'marketCap']
@@ -82,7 +82,7 @@ columns_to_convert = ['yearHigh', 'yearLow', 'priceAvg50', 'priceAvg200', 'eps']
 for column in columns_to_convert:
     merged_df[column] = merged_df[column].astype('float64')
 
-merged_df.to_parquet('/Users/michaelb/Project 01/Historical Stock Fact Load/historical_stock_fact.parquet', index=False)
+merged_df.to_parquet('C:\Projects\Project01\historical_stock_fact.parquet', index=False)
 
 
 print(merged_df.head(5))
