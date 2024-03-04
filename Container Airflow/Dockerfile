@@ -18,4 +18,3 @@ RUN pip install apache-airflow==2.7.1 \
                 sqlalchemy==1.4.50 \
                 reportlab \
                 python-dotenv \
-		kaleido
